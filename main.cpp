@@ -789,7 +789,7 @@ namespace test
             {
                 for (auto& itt : it)
                 {
-                    itt.state == ERR_STATE;
+                    itt.state = ERR_STATE;
                 }
             }
         }
@@ -879,7 +879,7 @@ namespace test
         for (size_t state = 0; state < tbl[0].size(); ++state)
         {
             //std::cout << state << "\t";
-            printf("%4d", state);
+            printf("%4d", (int)state);
             for (int token = 0; token <= TERMINAL; ++token)
             {
                 auto tmp = tbl;
