@@ -312,6 +312,7 @@ int parse(std::vector<TokenType > input)
 }
 
 
+// 语法分析
 namespace test
 {
 
@@ -608,10 +609,12 @@ namespace test
     {
         std::set<Item> news;
         size_t sz = 0;
+
+        auto TT = I;
         do
         {
             news.clear();
-            for (auto it : I)
+            for (auto it : TT)
             {
                 if (it.beta.size() <= 0) continue;
                 auto X = it.beta.front();
@@ -637,6 +640,7 @@ namespace test
             }
             auto sz = I.size();
             I.insert(news.begin(), news.end());
+            TT = news;
             if (sz == I.size()) break;
         }
         while (true);
@@ -698,10 +702,11 @@ namespace test
 
         std::set<ITEMS2ITEMS> EE;
 
+        auto TT = T;
         do
         {
             std::set<ITEMS> news;
-            for (auto it : T)
+            for (auto it : TT)
             {
                 for (auto item : it.items)
                 {
@@ -722,6 +727,7 @@ namespace test
             }
             auto sz = T.size();
             T.insert(news.begin(), news.end());
+            TT = news;
             if (sz == T.size()) break;
         }
         while (true);
@@ -783,7 +789,7 @@ namespace test
             {
                 for (auto& itt : it)
                 {
-                    itt.state = ERR_STATE;
+                    itt.state == ERR_STATE;
                 }
             }
         }
@@ -887,7 +893,7 @@ namespace test
 
                 else
                     printf("%4s  ", " ");
-                    //std::cout << "     " << "\t";
+                //std::cout << "     " << "\t";
             }
             std::cout << std::endl;
         }
@@ -962,6 +968,191 @@ namespace test
     }*/
 }
 
+namespace lex
+{
+    const int EPSILON = 200;
+    const int NUM_CHAR = 256;
+    std::vector<int> NFA[20][NUM_CHAR];
+    void INIT_NFA()
+    {
+
+        {
+            NFA[1][EPSILON].push_back(4);
+            NFA[1][EPSILON].push_back(9);
+            NFA[1][EPSILON].push_back(14);
+            NFA[1]['i'].push_back(2);
+        }
+        {
+            NFA[2]['f'].push_back(3);
+        }
+        {
+            // 3
+        }
+        {
+            for (char c = 'a'; c <= 'z'; ++c)
+            {
+                NFA[4][c].push_back(5);
+            }
+        }
+        {
+            NFA[5][EPSILON].push_back(8);
+        }
+        {
+            for (char c = 'a'; c <= 'z'; ++c)
+            {
+                NFA[6][c].push_back(7);
+            }
+            for (char c = '0'; c <= '9'; ++c)
+            {
+                NFA[6][c].push_back(7);
+            }
+        }
+        {
+            NFA[7][EPSILON].push_back(8);
+        }
+        {
+            NFA[8][EPSILON].push_back(6);
+        }
+        {
+            for (char c = '0'; c <= '9'; ++c)
+            {
+                NFA[9][c].push_back(10);
+            }
+        }
+        {
+            NFA[10][EPSILON].push_back(13);
+        }
+        {
+            for (char c = '0'; c <= '9'; ++c)
+            {
+                NFA[11][c].push_back(12);
+            }
+        }
+        {
+            NFA[12][EPSILON].push_back(13);
+        }
+        {
+            NFA[13][EPSILON].push_back(11);
+        }
+        {
+            // 任何字符
+            for (size_t i = 0; i < NUM_CHAR; ++i)
+            {
+                NFA[14][i].push_back(15);
+            }
+            NFA[14][EPSILON].clear();
+        }
+    }
+
+    void CLOSURE(std::set<int>& S)
+    {
+        std::set<int> TT = S;
+        do
+        {
+            std::set<int> news;
+            for (auto state: TT)
+            {
+                auto ss = NFA[state][EPSILON];
+                for (auto sta : ss)
+                    news.insert(sta);
+            }
+            auto szori = S.size();
+            S.insert(news.begin(), news.end());
+            TT = news;
+            if (S.size() == szori) break;
+        }
+        while (true);
+        return;
+    }
+
+    void DFA_EDGE(const std::set<int>& d, char c, std::set<int>& out)
+    {
+        out.clear();
+        for (auto state : d)
+        {
+            auto ss = NFA[state][c];
+            out.insert(ss.begin(), ss.end());
+        }
+        CLOSURE(out);
+        return;
+    }
+
+    struct CC
+    {
+        std::set<int> I;
+        char c;
+        std::set<int> J;
+    };
+
+    void test()
+    {
+        INIT_NFA();
+        std::set<int> S = { 1 };
+        CLOSURE(S);
+
+        std::set<std::set<int>> DFA;
+        DFA.insert(S);
+
+        std::vector<CC> ccs;
+
+        auto TT = DFA;
+        do
+        {
+            std::set<std::set<int>> news;
+            for (auto ss : TT)
+            {
+                std::set<int> out;
+                for (int i = 0; i < NUM_CHAR; ++i)
+                {
+                    if (i != EPSILON)
+                    {
+                        DFA_EDGE(ss, (unsigned char)i, out);
+                        {
+                            if (out.size() > 0)
+                            {
+                                CC c;
+                                c.I = ss; c.c = i; c.J = out;
+                                ccs.push_back(c);
+                                news.insert(out);
+                            }
+                        }
+                    }
+                }
+            }
+            auto szori = DFA.size();
+            DFA.insert(news.begin(), news.end());
+            TT = news;
+            if (szori == DFA.size()) break;
+        }
+        while (true);
+
+        // 整理
+        std::map<std::set<int>, int> mp;
+        std::map<int, std::set<int>> mp1;
+        int DFA_[20][NUM_CHAR];
+        {
+            int count = 1;
+            for (auto& it : DFA)
+            {
+                mp[it] = count++;
+                mp1[mp[it]] = it;
+            }
+        }
+        {
+
+            for (auto& it : ccs)
+            {
+                DFA_[mp[it.I]][it.c] = mp[it.J];
+            }
+        }
+
+        auto k = DFA_[mp[S]]['5'];
+        auto sss = mp1[k];
+
+        return;
+    }
+}
+
 int main() {
     //init_action_tbl();
     //init_rule();
@@ -970,5 +1161,6 @@ int main() {
     test::test();
     test::GTbl();
     test::PTbl();
+    lex::test();
     return 0;
 }
